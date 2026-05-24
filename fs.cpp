@@ -1,4 +1,5 @@
 #include "fs.hpp"
+#include "inode.hpp"
 #include <iostream>
 #include <cstring>
 using std::vector;
@@ -25,6 +26,12 @@ sb.inode_blocks=10;
 sb.data_start=sb.inode_start+sb.inode_blocks;
 sb.total_inodes=128;
 write_superblock();
+InodeTable it(disk,sb.inode_start);
+Inode empty;
+ memset(&empty,0,sizeof(Inode));
+ for(int i=0;i<sb.total_inodes;i++){
+    it.write_inode(i,empty);
+ }
 cout<<"Filesystem formatted successfully\n";
 }
 void FileSystem::load(){
