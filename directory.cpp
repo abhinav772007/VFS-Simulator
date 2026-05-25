@@ -21,20 +21,24 @@ void Directory::save(){
 }
 
 //adding file
-void Directory::add_entry(char* name,int inode_id){
+bool Directory::add_entry(const char* name,int inode_id){
+    if(inode_id<0)return false;
+    if(find_entry(name)>=0)return false;
     for(int i=0;i<64;i++){
-        if(entries[i].inode_id=='\0'){
-            strcpy(entries[i].name,name);
+        if(entries[i].inode_id==0){
+            strncpy(entries[i].name,name,sizeof(entries[i].name)-1);
+            entries[i].name[sizeof(entries[i].name)-1]='\0';
             entries[i].inode_id=inode_id;
-            return;
+            return true;
         }
     }
+    return false;
 }
 
 //finding file
-int Directory::find_entry(char *name){
+int Directory::find_entry(const char *name){
     for(int i=0;i<64;i++){
-        if(strcmp(entries[i].name,name)=='\0'){
+        if(entries[i].inode_id!=0 && strcmp(entries[i].name,name)==0){
             return entries[i].inode_id;
         }
     }
@@ -45,9 +49,12 @@ int Directory::find_entry(char *name){
 
 void Directory::list(){
     cout<<"files:\n";
+    bool check=false;
     for(int i=0;i<64;i++){
-        if(entries[i].inode_id!='\0'){
+        if(entries[i].inode_id!=0){
             cout<<entries[i].name<<"\n";
+            check=true;
         }
     }
+    if(!check)cout<<"empty :( \n";
 }

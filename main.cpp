@@ -16,41 +16,63 @@ int main(){
         Disk disk("disk.img");
         FileSystem fs(disk);
         int choice;
-        cout<<"1. Format filesystem\n";
+        cout<<"1. Format filesystem (this erases all the data !!)\n";
         cout<<"2. Load filesystem\n";
         cin>>choice;
         if(choice==1){
             fs.format();
         }
-        else{
+        else if(choice==2){
             fs.load();
         }
+        else{
+            cerr<<"invalid choice !!\n";
+            return 1;
+        }
         fs.debug();
-        Bitmap bm(disk,11,1024);
-        bm.load();
-        InodeTable it(disk,1);
+        const superblock& sb=fs.get_superblock();
+        //int bitmap_block=sb.inode_start+sb.inode_blocks;
+        // Bitmap bm(disk,11,1024);
+        // bm.load();
+        InodeTable it(disk,sb.inode_start);
         Inode root=it.read_inode(0);
         Directory dir(disk,root.direct_blocks[0]);
         dir.load();
 
-        int op;
-        cout<<"enter your opt:\n";
-        cin>>op;
-        if(op==1){
-            char name[32];
-            cout<<"enter filename: \n";
-            cin>>name;
-            int inode_id=it.allocate_inode();
-            dir.add_entry(name,inode_id);
-            dir.save();
-            cout<<"file created...\n";
+        while(true){
+            cout<<"create file ---> 1\n";
+            cout<<"list files ---> 2\n";
+            cout<<"exit ----> 3\n";
+            int op;
+            cin>>op;
+            if(op==3){
+                cout<<"exiting.....\n";
+                break;}
+            if(op==1){
+                char name[32];
+                cout<<"enter filename : \n";
+                cin>>name;
+                int inode_id=it.allocate_inode();
+                if(inode_id<0){
+                    cerr<<"sorry,no free inode\n";
+                    continue;
+                }
+                if(!dir.add_entry(name,inode_id)){
+                    cerr<<"could not add entry(duplicate entry or dir full)..\n";
+                    continue;
+                }
+                dir.save();
+                cout<<"file created -> "<<name <<" (inode "<<inode_id<<")\n";
+            }
+            else if(op==2){
+                dir.list();
+            }
+            else{
+                cerr<<"invalid option\n";
+            }
+
         }
-        else{
-            dir.list();
-        }
-        int b=bm.allocate_block();
-        cout<<"Allocated block: "<<b<<"\n";
-        bm.debug();
+        
 
 
         // InodeTable it(disk,1);

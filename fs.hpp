@@ -22,6 +22,6 @@ class FileSystem{
         void format();
         void load();
         void debug();
-
+        const superblock& get_superblock() const{ return sb;}
 
 };

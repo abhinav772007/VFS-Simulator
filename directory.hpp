@@ -15,7 +15,7 @@ class Directory{
         Directory(Disk& disk,int block_num);
         void save();
         void load();
-        void add_entry(char* name,int inode_index);
-        int find_entry(char *name);
+        bool add_entry(const char* name,int inode_index);
+        int find_entry(const char *name);
         void list();
 };
