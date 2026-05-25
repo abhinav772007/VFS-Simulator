@@ -1,5 +1,6 @@
 #include "fs.hpp"
 #include "inode.hpp"
+#include "bitmap.hpp"
 #include <iostream>
 #include <cstring>
 using std::vector;
@@ -23,7 +24,8 @@ sb.total_blocks=Disk::TOTAL_BLOCKS;
 sb.block_size=Disk::BLOCK_SIZE;
 sb.inode_start=1;
 sb.inode_blocks=10;
-sb.data_start=sb.inode_start+sb.inode_blocks;
+int bitmap_block=sb.inode_start+sb.inode_blocks;
+sb.data_start=sb.inode_start+sb.inode_blocks+1;
 sb.total_inodes=128;
 write_superblock();
 InodeTable it(disk,sb.inode_start);
@@ -32,6 +34,11 @@ Inode empty;
  for(int i=0;i<sb.total_inodes;i++){
     it.write_inode(i,empty);
  }
+ 
+ Bitmap bm(disk,bitmap_block,sb.total_blocks); //init bitmap
+for(int i=0;i<sb.data_start;i++){
+    bm.allocate_block();
+}
 cout<<"Filesystem formatted successfully\n";
 }
 void FileSystem::load(){

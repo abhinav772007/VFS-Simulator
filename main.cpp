@@ -1,6 +1,7 @@
 #include "disk.hpp"
 #include "fs.hpp"
 #include "inode.hpp"
+#include "bitmap.hpp"
 #include <iostream>
 using std::vector;
 using std::cout;
@@ -24,12 +25,19 @@ int main(){
             fs.load();
         }
         fs.debug();
-        InodeTable it(disk,1);
-        int inode_id=it.allocate_inode();
-        cout<<"Allocated inode id: "<<inode_id<<"\n";
-        Inode inode=it.read_inode(inode_id);
-        cout<<"used: "<<inode.used<<"\n";
-        
+        Bitmap bm(disk,11,1024);
+        bm.load();
+        int b=bm.allocate_block();
+        cout<<"Allocated block: "<<b<<"\n";
+        bm.debug();
+
+
+        // InodeTable it(disk,1);
+        // int inode_id=it.allocate_inode();
+        // cout<<"Allocated inode id: "<<inode_id<<"\n";
+        // Inode inode=it.read_inode(inode_id);
+        // cout<<"used: "<<inode.used<<"\n";
+
         // vector<char> data(Disk::BLOCK_SIZE,0);
         // string msg="Hello,this is abhinav!";
         // std::copy(msg.begin(),msg.end(),data.begin());
