@@ -27,6 +27,7 @@ class FileSystem{
         void debug();
         const superblock& get_superblock() const{ return sb;}
         bool create_file(const char* name);
+        bool delete_file(const char* name);
         void list_files();
         bool write_file(const char* name, const std::string& data);
         bool read_file(const char* name,std::string &out);

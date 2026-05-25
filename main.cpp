@@ -40,6 +40,7 @@ int main(){
             cout<<"exit ----> 3\n";
             cout<<"write in file --->4\n";
             cout<<"read from file -->5\n";
+            cout<<"delete file --->6\n";
             int op;
             cin>>op;
             if(op==3){
@@ -73,8 +74,14 @@ int main(){
                     cout<<"file content: "<<content<<"\n";
                 }
             }
+            else if(op==6){
+                char name[32];
+                cout<<"enter filename to delete: ";
+                cin>>name;
+                fs.delete_file(name);
+            }
             else{
-                cerr<<"invalid option\n";
+                cerr<<"invalid option,try again...\n";
             }
 
         }

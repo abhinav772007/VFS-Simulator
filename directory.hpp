@@ -16,6 +16,7 @@ class Directory{
         void save();
         void load();
         bool add_entry(const char* name,int inode_index);
+        int remove_entry(const char* name);
         int find_entry(const char *name);
         void list();
 };

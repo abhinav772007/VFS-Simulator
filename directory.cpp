@@ -45,6 +45,19 @@ int Directory::find_entry(const char *name){
     return -1;
 }
 
+//remove entry
+int Directory::remove_entry(const char* name){
+    for(int i=0;i<64;i++){
+        if(entries[i].inode_id!=0 && strcmp(entries[i].name,name)==0){
+            int inode_id=entries[i].inode_id;
+            entries[i].inode_id=0;
+            memset(entries[i].name,0,sizeof(entries[i].name));
+            return inode_id;
+        }
+    }
+    return -1;
+}
+
 //listing files
 
 void Directory::list(){

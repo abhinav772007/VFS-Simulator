@@ -179,3 +179,42 @@ bool FileSystem::read_file(const char* name,string& out){
     out.assign(buffer.begin(),buffer.begin()+inode.size);
     return true;
 }
+bool FileSystem::delete_file(const char* name){
+    InodeTable it(disk,sb.inode_start);
+    int bitmap_block=sb.inode_blocks+sb.inode_start;
+    Bitmap bm(disk,bitmap_block,sb.total_blocks);
+    bm.load();
+    Directory dir(disk,root_dir_block);
+    dir.load();
+
+    int inode_id=dir.find_entry(name);
+    if(inode_id<0){
+        cerr<<"file not found\n";
+        return false;
+    }
+    if(inode_id==0){
+        cerr<<"cannot delete root !! \n";
+        return false;
+    }
+    Inode inode=it.read_inode(inode_id);
+    if(inode.is_dir){
+        cerr<<"it is directory,we cant delete it!! \n";
+        return false;
+    }
+
+    for(int i=0;i<5;i++){
+        if(inode.direct_blocks[i]!=0){
+            bm.free_block(inode.direct_blocks[i]);
+        }
+    }
+    it.free_inode(inode_id);
+    if(dir.remove_entry(name)<0){
+        cerr<<"directory entry missing...\n";
+        return false;
+    }
+
+    dir.save();
+    cout<<"deleted "<<name<<" \n";
+    return true;
+
+}
