@@ -1,6 +1,7 @@
 #include "fs.hpp"
 #include "inode.hpp"
 #include "bitmap.hpp"
+#include "directory.hpp"
 #include <iostream>
 #include <cstring>
 using std::vector;
@@ -39,6 +40,21 @@ Inode empty;
 for(int i=0;i<sb.data_start;i++){
     bm.allocate_block();
 }
+bm.load();
+int root_block=bm.allocate_block();
+//InodeTable it(disk,sb.inode_start);
+Inode root;
+memset(&root,0,sizeof(Inode));
+root.used=1;
+root.is_dir=1;
+root.direct_blocks[0]=root_block;
+it.write_inode(0,root);
+//initialize dir block
+DirEntry empty_entries[64];
+memset(empty_entries,0,sizeof(empty_entries));
+vector<char> buffer(Disk::BLOCK_SIZE,0);
+memcpy(buffer.data(),empty_entries,sizeof(empty_entries));
+disk.write_block(root_block,buffer);
 cout<<"Filesystem formatted successfully\n";
 }
 void FileSystem::load(){

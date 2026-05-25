@@ -2,6 +2,7 @@
 #include "fs.hpp"
 #include "inode.hpp"
 #include "bitmap.hpp"
+#include "directory.hpp"
 #include <iostream>
 using std::vector;
 using std::cout;
@@ -27,6 +28,26 @@ int main(){
         fs.debug();
         Bitmap bm(disk,11,1024);
         bm.load();
+        InodeTable it(disk,1);
+        Inode root=it.read_inode(0);
+        Directory dir(disk,root.direct_blocks[0]);
+        dir.load();
+
+        int op;
+        cout<<"enter your opt:\n";
+        cin>>op;
+        if(op==1){
+            char name[32];
+            cout<<"enter filename: \n";
+            cin>>name;
+            int inode_id=it.allocate_inode();
+            dir.add_entry(name,inode_id);
+            dir.save();
+            cout<<"file created...\n";
+        }
+        else{
+            dir.list();
+        }
         int b=bm.allocate_block();
         cout<<"Allocated block: "<<b<<"\n";
         bm.debug();
