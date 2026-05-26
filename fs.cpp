@@ -8,6 +8,18 @@ using std::vector;
 using std::cout;
 using std::cerr;
 using std::string;
+
+static const int MAX_DIRECT_BLOCKS=5;
+
+static int blocks_for_size(int size){
+    if(size<=0) return 0;
+    int n=(size+Disk::BLOCK_SIZE-1)/Disk::BLOCK_SIZE;
+    return n>MAX_DIRECT_BLOCKS?MAX_DIRECT_BLOCKS:n;
+}
+
+static int max_file_bytes(){
+    return MAX_DIRECT_BLOCKS*Disk::BLOCK_SIZE;
+}
 //constructor
 FileSystem::FileSystem(Disk& disk): disk(disk){}
 
@@ -131,30 +143,47 @@ bool FileSystem::write_file(const char* name,const string &data){
     }
 
     Inode inode=it.read_inode(inode_id);
-    int block;
-    if(inode.direct_blocks[0]!=0){
-        block=inode.direct_blocks[0];
+    size_t n=data.size();
+    int maxby=max_file_bytes();
+    if((int)n>maxby){
+        cerr<<"file too large.. (max bytes are "<<maxby<<"),cutting extra size.\n";
+        n=maxby;
     }
-    else{
-        block=bm.allocate_block();
+    int new_blocks=blocks_for_size((int)n);
+    int old=blocks_for_size(inode.size);
+
+    //write 
+    for(int i=0;i<new_blocks;i++){
+        if(inode.direct_blocks[i]==0){
+         int block=bm.allocate_block();
         if(block<0){
             cerr<<"no free blocks\n";
             return false;
         }
-        inode.direct_blocks[0]=block;
+        inode.direct_blocks[i]=block;
+        }
+        vector<char> buffer(Disk::BLOCK_SIZE,0);
+        size_t offset=(size_t)i*Disk::BLOCK_SIZE;
+        size_t chunk=n-offset;
+        if(chunk>Disk::BLOCK_SIZE)chunk=Disk::BLOCK_SIZE;
+        if(chunk>0)memcpy(buffer.data(),data.data()+offset,chunk);
+        disk.write_block(inode.direct_blocks[i],buffer);
     }
-    size_t n=data.size();
-    if(n>Disk::BLOCK_SIZE)n=Disk::BLOCK_SIZE;
-    vector<char> buffer(Disk::BLOCK_SIZE,0);
-    if(n>0){
-        memcpy(buffer.data(),data.data(),n);
+    
+   //shrink (free blocks are not used)
+   for(int i=new_blocks;i<old;i++){
+    if(inode.direct_blocks[i]!=0){
+        bm.free_block(inode.direct_blocks[i]);
+        inode.direct_blocks[i]=0;
     }
-    disk.write_block(block,buffer);
+   }
+    
+    
     inode.size=(int)n;
     inode.used=1;
     inode.is_dir=0;
     it.write_inode(inode_id,inode);
-    cout<<"written "<<n<<" bytes\n";
+    cout<<"written "<<n<<" bytes ( "<<new_blocks<<" blocks\n";
     return true;
 
 }
@@ -169,15 +198,28 @@ bool FileSystem::read_file(const char* name,string& out){
         return false;
     }
     Inode inode=it.read_inode(inode_id);
-    if(inode.direct_blocks[0]==0 || inode.size==0){
+    if(inode.size==0){
         out.clear();
         cout<<"file is empty...\n";
         return true;
     }
-    vector<char> buffer;
-    disk.read_block(inode.direct_blocks[0],buffer);
-    out.assign(buffer.begin(),buffer.begin()+inode.size);
+    int need=blocks_for_size(inode.size);
+    out.clear();
+    out.reserve(inode.size);
+    for(int i=0;i<need;i++){
+        if(inode.direct_blocks[i]==0){
+            cerr<<"Invalid inode: data block "<<i<<" not found\n";
+            return false;
+        }
+        vector<char> buffer;
+        disk.read_block(inode.direct_blocks[i],buffer);
+        int offset=i*Disk::BLOCK_SIZE;
+        int rem=inode.size-offset;
+        int chunk=rem>Disk::BLOCK_SIZE?Disk::BLOCK_SIZE:rem;
+        out.append(buffer.data(),buffer.data()+chunk);
+    }
     return true;
+    
 }
 bool FileSystem::delete_file(const char* name){
     InodeTable it(disk,sb.inode_start);
