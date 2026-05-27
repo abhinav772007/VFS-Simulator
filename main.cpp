@@ -5,127 +5,133 @@
 #include "directory.hpp"
 #include <iostream>
 #include<cstring>
+#include<sstream>
+#include<string>
+#include<algorithm>
 using std::vector;
 using std::cout;
 using std::cin;
 using std::cerr;
 using std::string;
 using std::fstream;
-
+using std::istringstream;
+void trim(string &s){
+    while(!s.empty() && (s.back()==' ' || s.back()=='\t'))s.pop_back();
+    size_t i=0;
+    while(i<s.size() && (s[i]==' '||s[i]=='\t'))i++;
+    s=s.substr(i);
+}
+void help(){
+    cout<<"------------Commands--------\n";
+    cout<<" ls             list current directory\n";
+    cout<<" pwd            print current directory\n";
+    cout<<" mkdir          create directory\n";
+    cout<<" cd    <dir>    change directory\n";
+    cout<<" touch <file>   create empty file\n";
+    cout<<" write <file>   write file\n";
+    cout<<" cat <file>     read file\n";
+    cout<<" rm <file>      delete file\n";
+    cout<<" debug          show filesystem info\n";
+    cout<<" clear          clear screen\n";
+    cout<<" exit           exiting the program\n";
+    cout<<"----------------------------------------\n\n";
+}
 
 int main(){
     try{
         Disk disk("disk.img");
         FileSystem fs(disk);
-        int choice;
-        cout<<"1. Format filesystem (this erases all the data !!)\n";
-        cout<<"2. Load filesystem\n";
+        cout<<"Virtual Filesystem Simlator\n";
+        cout<<"Type help for commands\n";
+        cout<<"format | load\n";
+        cout<<"vfs> ";
+        string choice;
         cin>>choice;
-        if(choice==1){
+        cin.ignore(10000,'\n');
+        if(choice=="format"){
             fs.format();
         }
-        else if(choice==2){
+        else if(choice=="load"){
             fs.load();
         }
         else{
             cerr<<"invalid choice !!\n";
             return 1;
         }
-        fs.debug();
-        
-
+        string word;    
         while(true){
-            cout<<"create file ---> 1\n";
-            cout<<"list files ---> 2\n";
-            cout<<"exit ----> 3\n";
-            cout<<"write in file --->4\n";
-            cout<<"read from file -->5\n";
-            cout<<"delete file --->6\n";
-            cout<<"mkdir --->7\n";
-            cout<<"cd --->8\n";
-            cout<<"cd .. --->9\n";
-            cout<<"pwd --->10\n";
-            int op;
-            cin>>op;
-            if(op==3){
-                cout<<"exiting.....\n";
-                break;}
-            if(op==1){
-                char name[32];
-                cout<<"enter filename : \n";
-                cin>>name;
-                fs.create_file(name);
+            cout<<"vfs> ";
+            if(!std::getline(cin,word))break;
+            trim(word);
+            if(word.empty())continue;
+            istringstream iss(word);
+            string com;
+            iss>>com;
+            if(com=="help")help();
+            else if(com=="exit"){cout<<"exiting...\n";break;}
+            else if(com=="clear"){
+                cout<<"\033[2J\033[H"; //ansi clear
             }
-            else if(op==2){
-                fs.list_files();
+            else if(com=="debug")fs.debug();
+            else if(com=="ls" || com=="list")fs.list_files();
+            else if(com=="pwd")fs.pwd();
+            else if(com=="mkdir"){
+                string name;
+                iss>>name;
+                if(name.empty())cerr<<"empty string\n";
+                else fs.make_dir(name.c_str());
             }
-            else if(op==4){
-                char name[32];
-                cout<<"enter filename: \n";
-                cin>>name;
-                cin.ignore(10000,'\n');
-                string data;
-                cout<<"enter data: ";
-                getline(cin,data);
-                fs.write_file(name,data);
+            else if(com=="cd"){
+                string name;
+                iss>>name;
+                if(name.empty())cerr<<"empty string\n";
+                else fs.change_dir(name.c_str());
             }
-            else if(op==5){
-                char name[32];
-                cout<<"enter filename: \n";
-                cin>>name;
-                string content;
-                if(fs.read_file(name,content)){
-                    cout<<"file content: "<<content<<"\n";
+            else if(com=="touch" || com=="create"){
+                string name;
+                iss>>name;
+                if(name.empty())cerr<<"empty string\n";
+                else fs.create_file(name.c_str());
+            }
+            else if(com=="write"){
+                string name;
+                iss>>name;
+                if(name.empty()){
+                    cerr<<"empty string\n";
+                continue;}
+                string rem;
+                std::getline(iss,rem);
+                trim(rem);
+                if(rem.empty()){
+                cout<<"enter content : ";
+                std::getline(cin,rem);
+            }
+            fs.write_file(name.c_str(),rem);
+            }
+            else if(com=="cat" || com=="read"){
+                string name;
+                iss>>name;
+                if(name.empty()){
+                    cerr<<"empty string\n";
+                    continue;
                 }
+                string data;
+                if(fs.read_file(name.c_str(),data))cout<<data<<"\n";
             }
-            else if(op==6){
-                char name[32];
-                cout<<"enter filename to delete: ";
-                cin>>name;
-                fs.delete_file(name);
+            else if(com=="rm" || com=="delete"){
+                string name;
+                iss>>name;
+                if(name.empty())cerr<<"empty string\n";
+                else fs.delete_file(name.c_str());
             }
-            else if(op==7){
-                char name[32];
-                cout<<"enter dir name: ";
-                cin>>name;
-                fs.make_dir(name);
-            }
-            else if(op==8){
-                char name[32];
-                cout<<"enter dir name (or type ..): ";
-                cin>>name;
-                fs.change_dir(name);
-            }
-            else if(op==9)fs.change_dir_up();
-            else if(op==10)fs.pwd();
             else{
-                cerr<<"invalid option,try again...\n";
-            }
-
-        }
-        
-
-
-        // InodeTable it(disk,1);
-        // int inode_id=it.allocate_inode();
-        // cout<<"Allocated inode id: "<<inode_id<<"\n";
-        // Inode inode=it.read_inode(inode_id);
-        // cout<<"used: "<<inode.used<<"\n";
-
-        // vector<char> data(Disk::BLOCK_SIZE,0);
-        // string msg="Hello,this is abhinav!";
-        // std::copy(msg.begin(),msg.end(),data.begin());
-        // disk.write_block(5,data);
-        // vector<char> read_data;
-        // disk.read_block(5,read_data);
-        // string output(read_data.begin(),read_data.end());
-        // cout<<"Written message: "<<msg<<"\n";
-        // cout<<"output message: "<<output<<"\n";
-    }
+        cerr<<"unknown command,type help to know.\n";}
+    }}
     catch(const std::exception& e){
         std::cerr<<"Error: "<<e.what()<<"\n";
         return 1;
     }
-    return 0;
+  
 
-}
+
+return 0;}
