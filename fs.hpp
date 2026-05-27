@@ -14,10 +14,14 @@ class FileSystem{
     private:
         Disk &disk;
         superblock sb;
+       
+        int root_dir_block;
+        int current_dir_inode; //0 for root
         void write_superblock();
         void read_superblock();
         void refresh_root_block();
-        int root_dir_block;
+        int get_dir_block(int inode_id); //func to get dir
+        int bitmap_block() const {return sb.inode_start+sb.inode_blocks;}
     
     public:
         FileSystem(Disk &disk);
@@ -31,5 +35,9 @@ class FileSystem{
         void list_files();
         bool write_file(const char* name, const std::string& data);
         bool read_file(const char* name,std::string &out);
+        bool make_dir(const char* name); //sort of mkdir
+        bool change_dir(const char* name); // this is sort of cd
+        bool change_dir_up(); // sort of cd..
+        void pwd(); //cur dir
 
 };

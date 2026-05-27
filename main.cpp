@@ -41,6 +41,10 @@ int main(){
             cout<<"write in file --->4\n";
             cout<<"read from file -->5\n";
             cout<<"delete file --->6\n";
+            cout<<"mkdir --->7\n";
+            cout<<"cd --->8\n";
+            cout<<"cd .. --->9\n";
+            cout<<"pwd --->10\n";
             int op;
             cin>>op;
             if(op==3){
@@ -80,6 +84,20 @@ int main(){
                 cin>>name;
                 fs.delete_file(name);
             }
+            else if(op==7){
+                char name[32];
+                cout<<"enter dir name: ";
+                cin>>name;
+                fs.make_dir(name);
+            }
+            else if(op==8){
+                char name[32];
+                cout<<"enter dir name (or type ..): ";
+                cin>>name;
+                fs.change_dir(name);
+            }
+            else if(op==9)fs.change_dir_up();
+            else if(op==10)fs.pwd();
             else{
                 cerr<<"invalid option,try again...\n";
             }

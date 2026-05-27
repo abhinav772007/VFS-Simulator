@@ -21,7 +21,7 @@ static int max_file_bytes(){
     return MAX_DIRECT_BLOCKS*Disk::BLOCK_SIZE;
 }
 //constructor
-FileSystem::FileSystem(Disk& disk): disk(disk){}
+FileSystem::FileSystem(Disk& disk): disk(disk),root_dir_block(0),current_dir_inode(0){}
 
 void FileSystem::write_superblock(){
 vector<char> block(Disk::BLOCK_SIZE,0);
@@ -97,7 +97,12 @@ cout<<"Total inodes: "<<sb.total_inodes<<"\n";
 }
 bool FileSystem::create_file(const char* name){
     InodeTable it(disk,sb.inode_start);
-    Directory dir(disk,root_dir_block);
+    int block=get_dir_block(current_dir_inode);
+    if(block<0){
+        cerr<<"invalid current directory\n";
+        return false;
+    }
+    Directory dir(disk,block);
     dir.load();
 
     int inode_id=it.allocate_inode();
@@ -123,7 +128,11 @@ bool FileSystem::create_file(const char* name){
 }
 
 void FileSystem::list_files(){
-    Directory dir(disk,root_dir_block);
+    int block=get_dir_block(current_dir_inode);
+    if(block<0)return;
+
+    InodeTable it(disk,sb.inode_start);
+    Directory dir(disk,block);
     dir.load();
     dir.list();
 }
@@ -133,7 +142,12 @@ bool FileSystem::write_file(const char* name,const string &data){
     int bitmap_block=sb.inode_start+sb.inode_blocks;
     Bitmap bm(disk,bitmap_block,sb.total_blocks);
     bm.load();
-    Directory dir(disk,root_dir_block);
+    int block=get_dir_block(current_dir_inode);
+    if(block<0){
+        cerr<<"invalid current directory\n";
+        return false;
+    }
+    Directory dir(disk,block);
     dir.load();
 
     int inode_id=dir.find_entry(name);
@@ -143,6 +157,10 @@ bool FileSystem::write_file(const char* name,const string &data){
     }
 
     Inode inode=it.read_inode(inode_id);
+    if(inode.is_dir){
+        cerr<<"it is a directory not a file\n";
+        return false;
+    }
     size_t n=data.size();
     int maxby=max_file_bytes();
     if((int)n>maxby){
@@ -190,7 +208,12 @@ bool FileSystem::write_file(const char* name,const string &data){
 
 bool FileSystem::read_file(const char* name,string& out){
     InodeTable it(disk,sb.inode_start);
-    Directory dir(disk,root_dir_block);
+    int block=get_dir_block(current_dir_inode);
+    if(block<0){
+        cerr<<"invalid current directory\n";
+        return false;
+    }
+    Directory dir(disk,block);
     dir.load();
     int inode_id=dir.find_entry(name);
     if(inode_id==-1){
@@ -198,6 +221,10 @@ bool FileSystem::read_file(const char* name,string& out){
         return false;
     }
     Inode inode=it.read_inode(inode_id);
+    if(inode.is_dir){
+        cerr<<"it is a directory not a file\n";
+        return false;
+    }
     if(inode.size==0){
         out.clear();
         cout<<"file is empty...\n";
@@ -226,7 +253,12 @@ bool FileSystem::delete_file(const char* name){
     int bitmap_block=sb.inode_blocks+sb.inode_start;
     Bitmap bm(disk,bitmap_block,sb.total_blocks);
     bm.load();
-    Directory dir(disk,root_dir_block);
+    int block=get_dir_block(current_dir_inode);
+    if(block<0){
+        cerr<<"invalid current directory\n";
+        return false;
+    }
+    Directory dir(disk,block);
     dir.load();
 
     int inode_id=dir.find_entry(name);
@@ -259,4 +291,100 @@ bool FileSystem::delete_file(const char* name){
     cout<<"deleted "<<name<<" \n";
     return true;
 
+}
+
+int FileSystem::get_dir_block(int inode_id){
+    InodeTable it(disk,sb.inode_start);
+    Inode in=it.read_inode(inode_id);
+    if(!in.used || !in.is_dir || in.direct_blocks[0]==0)return -1;
+    return in.direct_blocks[0];
+}
+
+bool FileSystem::make_dir(const char* name){
+    int parent_block=get_dir_block(current_dir_inode);
+    if(parent_block<0) return false;
+
+    InodeTable it(disk,sb.inode_start);
+    Bitmap bm(disk,bitmap_block(),sb.total_blocks);
+    bm.load();
+    Directory dir(disk,parent_block);
+    dir.load();
+if(dir.find_entry(name)>=0){
+    cerr<<"name exists already..\n";
+    return false;
+}
+int inode_id=it.allocate_inode();
+if(inode_id<0){
+    cerr<<"no free inode\n";
+    return false;
+}
+int block=bm.allocate_block();
+if(block<0){
+    it.free_inode(inode_id);
+    cerr<<"no free blocks\n";
+    return false;
+}
+Inode new_dir;
+memset(&new_dir,0,sizeof(new_dir));
+new_dir.used=1;
+new_dir.is_dir=1;
+new_dir.direct_blocks[0]=block;
+it.write_inode(inode_id,new_dir);
+DirEntry empty[64];
+memset(empty,0,sizeof(empty));
+vector<char> buf(Disk::BLOCK_SIZE,0);
+memcpy(buf.data(),empty,sizeof(empty));
+disk.write_block(block,buf);
+
+if(!dir.add_entry(name,inode_id)){
+    bm.free_block(block);
+    it.free_inode(inode_id);
+    cerr<<"directory full\n";
+    return false;
+}
+dir.save();
+
+cout<<"directory created: "<<name<<" (inode "<<inode_id<<" )\n";
+return true;
+}
+
+bool FileSystem::change_dir(const char* name){
+    if(strcmp(name,"..")==0)return change_dir_up();
+    int block=get_dir_block(current_dir_inode);
+    if(block<0)return false;
+    InodeTable it(disk,sb.inode_start);
+    Directory dir(disk,block);
+    dir.load();
+
+    int target_id=dir.find_entry(name);
+    if(target_id<0){
+        cerr<<"directory not found\n";
+        return false;
+    }
+
+    Inode target=it.read_inode(target_id);
+    if(!target.is_dir){
+        cerr<<"not a dir\n";
+        return false;
+    }
+
+    current_dir_inode=target_id;
+    cout<<"changed dir\n";
+    return true;
+}
+
+
+bool FileSystem::change_dir_up(){
+    if(current_dir_inode==0){
+        cout<<"current dir is root\n";
+        return true;
+    }
+    current_dir_inode=0;
+    cout<<"changed to root\n";
+    return true;
+} 
+
+void FileSystem::pwd(){
+if(current_dir_inode==0)cout<<"/ (root,inode 0)\n";
+else cout<<"current dir inode: "<<current_dir_inode<<"\n";
 }
