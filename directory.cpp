@@ -71,3 +71,11 @@ void Directory::list(){
     }
     if(!check)cout<<"empty :( \n";
 }
+
+vector<DirEntry> Directory::get_entries(){
+vector<DirEntry> out;
+for(int i=0;i<64;i++){
+    if(entries[i].inode_id!=0)out.push_back(entries[i]);
+}
+return out;
+}

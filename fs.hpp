@@ -1,5 +1,7 @@
 #pragma once
 #include "disk.hpp"
+#include<string>
+#include<vector>
 
 struct superblock{
     int total_blocks;
@@ -40,4 +42,15 @@ class FileSystem{
         bool change_dir_up(); // sort of cd..
         void pwd(); //cur dir
 
+        //snapshots...
+        bool snapshot_save(std::string &name);
+        bool snapshot_load(std::string &name);
+        void snapshot_list();
+
+        //vizualize
+        void viz_map();
+        void viz_bitmap();
+        void viz_inode(int inode_id);
+        void viz_tree();
+        void print_tree_rec(Disk &disk, int inode_start, int inode_id, const std::string &rep);
 };

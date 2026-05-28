@@ -14,4 +14,7 @@ class Disk{
         Disk(const std::string& filename);
         void read_block(int block_num,std::vector<char> & buffer);
         void write_block(int block_num,const std::vector<char>& buffer); 
+        std::string &path();
+        void close_disk();
+        void reopen_disk();
 };

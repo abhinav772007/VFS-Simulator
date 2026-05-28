@@ -124,6 +124,43 @@ int main(){
                 if(name.empty())cerr<<"empty string\n";
                 else fs.delete_file(name.c_str());
             }
+            else if(com=="snapshot"){
+                string sub;
+                iss>>sub;
+                if(sub=="save"){
+                    string name;
+                    iss>>name;
+                    if(name.empty())cerr<<"empty string\n";
+                    else fs.snapshot_save(name);
+                }
+                else if(sub=="load"){
+                    string name;
+                    iss>>name;
+                    if(name.empty())cerr<<"empty string \n";
+                    else fs.snapshot_load(name);
+                }
+                else if(sub=="list"){
+                    fs.snapshot_list();
+                }
+                else{
+                    cerr<<"invalid cmd\n";
+                }
+            }
+            else if(com=="viz"){
+                string sub;
+                iss>>sub;
+                if(sub=="map")fs.viz_map();
+                else if(sub=="bitmap")fs.viz_bitmap();
+                else if(sub=="tree")fs.viz_tree();
+                else if(sub=="inode"){
+                    int id;
+                    iss>>id;
+                    fs.viz_inode(id);
+                }
+                else{
+                    cerr<<"invalid cmd\n";
+                }
+            }
             else{
         cerr<<"unknown command,type help to know.\n";}
     }}

@@ -4,12 +4,32 @@
 #include "directory.hpp"
 #include <iostream>
 #include <cstring>
+//#include<experimental/filesystem>
+#include<fstream>
+#include<sstream>
+#include<sys/stat.h>
+#include<iomanip>
+#include <direct.h>
+
+
 using std::vector;
 using std::cout;
 using std::cerr;
 using std::string;
+//namespace fsys=std::filesystem;
 
 static const int MAX_DIRECT_BLOCKS=5;
+static const char* SNAP_DIR="snapshots";
+static const char* SNAP_INDEX="snapshots/index.txt";
+
+static bool copy_file_binary(const std::string& src, const std::string& dst) {
+    std::ifstream in(src, std::ios::binary);
+    if (!in) return false;
+    std::ofstream out(dst, std::ios::binary | std::ios::trunc);
+    if (!out) return false;
+    out << in.rdbuf();
+    return out.good();
+}
 
 static int blocks_for_size(int size){
     if(size<=0) return 0;
@@ -387,4 +407,125 @@ bool FileSystem::change_dir_up(){
 void FileSystem::pwd(){
 if(current_dir_inode==0)cout<<"/ (root,inode 0)\n";
 else cout<<"current dir inode: "<<current_dir_inode<<"\n";
+}
+
+bool FileSystem::snapshot_save(string &name){
+    _mkdir(SNAP_DIR);
+    if(name.empty()){
+        cerr << "empty input..\n";
+        return false;
+    }
+
+    string src = disk.path();
+    string dst = string(SNAP_DIR) + "/" + name + ".img";
+
+    disk.close_disk();
+    bool ok = copy_file_binary(src, dst);
+    disk.reopen_disk();
+
+    if(!ok){
+        cerr << "snapshot save failed\n";
+        return false;
+    }
+
+    std::ofstream idx(SNAP_INDEX, std::ios::app);
+    idx << name << "\n";
+    cout << "snapshot saved: " << name << "\n";
+    return true;
+}
+
+bool FileSystem::snapshot_load(string &name){
+    if(name.empty()){
+        cerr << "empty input..\n";
+        return false;
+    }
+
+    string src = string(SNAP_DIR) + "/" + name + ".img";
+    if(!std::ifstream(src).good()){
+        cerr << "snapshot not found\n";
+        return false;
+    }
+
+    string dst = disk.path();
+    disk.close_disk();
+    bool ok = copy_file_binary(src, dst);
+    disk.reopen_disk();
+
+    if(!ok){
+        cerr << "snapshot load failed\n";
+        return false;
+    }
+
+    load();
+    current_dir_inode = 0;
+    cout << "snapshot loaded: " << name << "\n";
+    return true;
+}
+
+void FileSystem::snapshot_list(){
+    std::ifstream idx(SNAP_INDEX);
+    if(!idx.good()){
+        cout << "no snapshots\n";
+        return;
+    }
+
+    cout << "snapshots:\n";
+    string name;
+    while(idx >> name){
+        cout << " " << name << "\n";
+    }
+}
+
+void FileSystem::viz_map(){
+    int bmap=sb.inode_start+sb.inode_blocks;
+    cout<<"list...\n";
+    cout<<" superblock: 0\n";
+    cout<<" inode blocks: "<<sb.inode_start<<" .. "<<(sb.inode_start+sb.inode_blocks-1)<<"\n";
+    cout<<" bitmap block: "<<bmap<<"\n";
+    cout<<" data blocks: "<<sb.data_start<<" .. "<<(sb.total_blocks-1)<<"\n";
+}
+
+void FileSystem::viz_bitmap(){
+    Bitmap bm(disk,bitmap_block(),sb.total_blocks);
+    bm.load();
+    bm.debug();
+}
+
+void FileSystem::viz_inode(int inode_id){
+    if(inode_id<0 || inode_id>=sb.total_inodes){
+        cerr<<"invalid inode id\n";
+        return ;
+    }
+    InodeTable it(disk,sb.inode_start);
+    Inode in=it.read_inode(inode_id);
+    cout<<"inode "<<inode_id<<":\n";
+    cout<<"used: "<<in.used<<"\n";
+    cout<<"is_dir: "<<in.is_dir<<"\n";
+    cout<<"size: "<<in.size<<"\n";
+    cout<<"direct blocks: ";
+    for(int i=0;i<5;i++)cout<<in.direct_blocks[i]<<" ";
+    cout<<"\n";
+    return ;
+}
+
+void FileSystem::print_tree_rec(Disk& disk, int inode_start, int inode_id, const string &rep){    InodeTable it(disk,inode_start);
+    Inode dir_inode=it.read_inode(inode_id);
+    if(!dir_inode.is_dir|| dir_inode.direct_blocks[0]==0)return;
+
+    Directory dir(disk,dir_inode.direct_blocks[0]);
+    dir.load();
+    auto ents=dir.get_entries();
+    for(auto&e:ents){
+        Inode n=it.read_inode(e.inode_id);
+        cout<<rep<<"|-- "<<e.name;
+        if(n.is_dir)cout<<"/(inode "<<e.inode_id<<", size "<<n.size<<")\n";
+        else cout<<"(inode "<<e.inode_id<<", size "<<n.size<<" )\n";
+        if(n.is_dir)print_tree_rec(disk,inode_start,e.inode_id,rep+"| ");
+
+    }
+}
+
+void FileSystem::viz_tree(){
+    cout<<"/ (inode 0)\n";
+    print_tree_rec(disk,sb.inode_start,0,"");
 }

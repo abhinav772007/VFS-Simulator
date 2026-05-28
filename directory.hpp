@@ -19,4 +19,5 @@ class Directory{
         int remove_entry(const char* name);
         int find_entry(const char *name);
         void list();
+        std::vector<DirEntry> get_entries();
 };

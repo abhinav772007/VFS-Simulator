@@ -40,3 +40,15 @@ void Disk::write_block(int block_num,const std::vector<char>& buffer){
         throw std::runtime_error("Failed to write block");
     }
 }
+
+std::string &Disk::path(){return filename;}
+
+void Disk::close_disk(){
+    if(file.is_open())file.close();
+}
+
+void Disk::reopen_disk(){
+    if(file.is_open())file.close();
+    file.open(filename,std::ios::in | std::ios::out | std::ios::binary);
+    if(!file) throw std::runtime_error("failed to reopen disk file");
+}
