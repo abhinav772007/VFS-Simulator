@@ -34,6 +34,8 @@ void help(){
     cout<<" debug          show filesystem info\n";
     cout<<" clear          clear screen\n";
     cout<<" exit           exiting the program\n";
+    cout<<"cache on/off/stats/clear      block cache\n";
+    cout<<"bench <file> <iter>      repeat read benchmark";
     cout<<"----------------------------------------\n\n";
 }
 
@@ -157,13 +159,41 @@ int main(){
                     iss>>id;
                     fs.viz_inode(id);
                 }
-                else{
-                    cerr<<"invalid cmd\n";
-                }
             }
-            else{
-        cerr<<"unknown command,type help to know.\n";}
-    }}
+                else if(com=="cache"){
+                    string sub;
+                    iss>>sub;
+                    if(sub=="on"){
+                        disk.set_cache_enabled(true);
+                    }
+                    else if(sub=="off"){
+                        disk.set_cache_enabled(false);
+                    }
+                    else if(sub=="stats"){
+                        disk.cache_stats();
+                    }
+                    else if(sub=="clear"){
+                        disk.clear_cache();
+                        cout<<"cache cleared\n";
+                    }
+                    else{
+                        cerr<<"invalid cmd\n";
+                    }
+                }
+                else if(com=="bench"){
+                    string name;
+                    int iter;
+                    iss>>name>>iter;
+                    fs.bench_read(name,iter);}
+                    else{
+                        cerr<<"invalid cmd\n";
+                    }
+                }
+                
+                
+            }
+            
+    
     catch(const std::exception& e){
         std::cerr<<"Error: "<<e.what()<<"\n";
         return 1;

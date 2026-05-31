@@ -53,4 +53,5 @@ class FileSystem{
         void viz_inode(int inode_id);
         void viz_tree();
         void print_tree_rec(Disk &disk, int inode_start, int inode_id, const std::string &rep);
-};
+        void bench_read( std::string &name,int iter);
+    };

@@ -10,7 +10,7 @@
 #include<sys/stat.h>
 #include<iomanip>
 #include <direct.h>
-
+#include<chrono>
 
 using std::vector;
 using std::cout;
@@ -528,4 +528,23 @@ void FileSystem::print_tree_rec(Disk& disk, int inode_start, int inode_id, const
 void FileSystem::viz_tree(){
     cout<<"/ (inode 0)\n";
     print_tree_rec(disk,sb.inode_start,0,"");
+}
+
+void FileSystem::bench_read(std::string &name,int iter){
+if(iter<1){
+    cerr<<"iterations should be +ve number\n";
+    return;
+}
+auto st=std::chrono::high_resolution_clock::now();
+for(int i=0;i<iter;i++){
+    string out;
+    if(!read_file(name.c_str(),out)){
+        cerr<<"failed to read\n";
+        return;}
+}
+auto end=std::chrono::high_resolution_clock::now();
+auto ms=std::chrono::duration_cast<std::chrono::milliseconds>(end-st).count();
+cout<<"read "<<name<<" "<<iter<<" times in "<<ms<<"ms\n";
+cout<<"average time per read: "<<(double)ms/iter<<"ms\n";
+disk.cache_stats();
 }
