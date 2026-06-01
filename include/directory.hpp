@@ -1,6 +1,6 @@
 #pragma once
 #include "disk.hpp"
-
+#include <vector>
 struct DirEntry{
     char name[32];
     int inode_id;

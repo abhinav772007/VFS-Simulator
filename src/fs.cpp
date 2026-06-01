@@ -19,8 +19,8 @@ using std::string;
 //namespace fsys=std::filesystem;
 
 static const int MAX_DIRECT_BLOCKS=5;
-static const char* SNAP_DIR="snapshots";
-static const char* SNAP_INDEX="snapshots/index.txt";
+static const char* SNAP_DIR = "data/snapshots";
+static const char* SNAP_INDEX = "data/snapshots/index.txt";
 
 static bool copy_file_binary(const std::string& src, const std::string& dst) {
     std::ifstream in(src, std::ios::binary);
@@ -221,7 +221,7 @@ bool FileSystem::write_file(const char* name,const string &data){
     inode.used=1;
     inode.is_dir=0;
     it.write_inode(inode_id,inode);
-    cout<<"written "<<n<<" bytes ( "<<new_blocks<<" blocks\n";
+    cout<<"written "<<n<<" bytes ( "<<new_blocks<<" blocks)\n";
     return true;
 
 }
@@ -410,6 +410,7 @@ else cout<<"current dir inode: "<<current_dir_inode<<"\n";
 }
 
 bool FileSystem::snapshot_save(string &name){
+    _mkdir("data");
     _mkdir(SNAP_DIR);
     if(name.empty()){
         cerr << "empty input..\n";

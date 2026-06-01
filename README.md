@@ -22,16 +22,36 @@ Everything is stored inside `disk.img`, so your data survives after you close th
 
 ## Project Structure
 
-| File | Purpose |
+```
+VFS-Simulator/
+├── main.cpp              # CLI entry point
+├── include/              # Header files (.hpp)
+│   ├── disk.hpp
+│   ├── fs.hpp
+│   ├── inode.hpp
+│   ├── bitmap.hpp
+│   └── directory.hpp
+├── src/                  # Implementation files (.cpp)
+│   ├── disk.cpp
+│   ├── fs.cpp
+│   ├── inode.cpp
+│   ├── bitmap.cpp
+│   └── directory.cpp
+├── data/                 # Runtime data (created when you run)
+│   ├── disk.img
+│   └── snapshots/
+├── build/                # Compiled executable (after build)
+│   └── fs.exe
+└── README.md
+```
+
+| Path | Purpose |
 |------|---------|
 | `main.cpp` | Interactive CLI — reads commands and calls filesystem functions |
-| `disk.cpp` / `disk.hpp` | Simulated disk — reads/writes 4096-byte blocks to `disk.img`, includes LRU block cache |
-| `fs.cpp` / `fs.hpp` | Main filesystem logic — format, load, files, directories, snapshots, viz, bench |
-| `inode.cpp` / `inode.hpp` | Inode table — stores file metadata (size, type, block pointers) |
-| `bitmap.cpp` / `bitmap.hpp` | Free block tracker — marks blocks as used or free |
-| `directory.cpp` / `directory.hpp` | Directory entries — maps filenames to inode numbers |
-| `disk.img` | Virtual disk (created automatically) |
-| `snapshots/` | Saved snapshot copies of the disk |
+| `include/*.hpp` | Class and struct declarations |
+| `src/*.cpp` | Disk, filesystem, inode, bitmap, directory logic |
+| `data/disk.img` | Virtual disk (created automatically) |
+| `data/snapshots/` | Saved snapshot copies of the disk |
 
 ---
 
@@ -68,18 +88,19 @@ Each directory is stored in one disk block and holds up to **64 entries**. Each 
 Open terminal inside the `VFS-Simulator` folder:
 
 ```powershell
-cd VFS-Simulator
-g++ -std=c++17 -Wall -o fs.exe main.cpp disk.cpp fs.cpp inode.cpp bitmap.cpp directory.cpp
+g++ -std=c++17 -Wall -Iinclude -o build/fs.exe main.cpp src/disk.cpp src/fs.cpp src/inode.cpp src/bitmap.cpp src/directory.cpp
 ```
 
-This creates `fs.exe`.
+This creates `build/fs.exe`.
 
 ---
 
 ## Run
 
+Run from the **project root** :
+
 ```powershell
-.\fs.exe
+.\build\fs.exe
 ```
 
 On first start you must choose:
@@ -138,7 +159,7 @@ After `format` or `load`, you get the `vfs>` prompt.
 | `snapshot load <name>` | Restore a saved snapshot |
 | `snapshot list` | List all saved snapshots |
 
-Snapshots are stored in `snapshots/<name>.img`. The list is kept in `snapshots/index.txt`.
+Snapshots are stored in `data/snapshots/<name>.img`. The list is kept in `data/snapshots/index.txt`.
 
 ### Visualization
 
@@ -168,41 +189,7 @@ The cache uses **LRU** (Least Recently Used) with a default capacity of **64 blo
 
 Example: `bench notes.txt 10` reads `notes.txt` 10 times and prints total time, average time, and cache hit rate.
 
----
 
-## Example Session
-
-```
-vfs> format
-vfs> touch hello.txt
-vfs> write hello.txt Hello World
-vfs> cat hello.txt
-vfs> mkdir docs
-vfs> cd docs
-vfs> touch notes.txt
-vfs> write notes.txt my notes here
-vfs> ls
-vfs> cd ..
-vfs> snapshot save backup1
-vfs> write hello.txt updated text
-vfs> snapshot load backup1
-vfs> cat hello.txt          ← shows old content
-vfs> cache on
-vfs> bench hello.txt 20
-vfs> viz tree
-vfs> exit
-```
-
-**Next run (persistence test):**
-
-```
-vfs> load
-vfs> ls
-vfs> cat hello.txt
-vfs> exit
-```
-
----
 
 ## How Each Part Works (Simple Explanation)
 
@@ -230,7 +217,7 @@ vfs> exit
 - Supports add, remove, find, and list operations
 
 ### Snapshots
-- Copies the entire `disk.img` to `snapshots/<name>.img`
+- Copies the entire `data/disk.img` to `data/snapshots/<name>.img`
 - Loading a snapshot replaces `disk.img` with the saved copy and reloads the filesystem
 - Lets you go back to an earlier state (time travel)
 
