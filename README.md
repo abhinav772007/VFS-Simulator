@@ -88,6 +88,7 @@ Each directory is stored in one disk block and holds up to **64 entries**. Each 
 Open terminal inside the `VFS-Simulator` folder:
 
 ```powershell
+mkdir build
 g++ -std=c++17 -Wall -Iinclude -o build/fs.exe main.cpp src/disk.cpp src/fs.cpp src/inode.cpp src/bitmap.cpp src/directory.cpp
 ```
 
